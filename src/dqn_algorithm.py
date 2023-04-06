@@ -1,5 +1,7 @@
 import numpy as np
 import time
+from collections import deque
+import torch
 
 def dqn(agent, env, brain_name, model_name="dqn_3fc_act_nodrop", n_episodes=2000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.995):
     """
@@ -13,6 +15,7 @@ def dqn(agent, env, brain_name, model_name="dqn_3fc_act_nodrop", n_episodes=2000
         eps_end (float): minimum value of epsilon
         eps_decay (float): multiplicative factor (per episode) for decreasing epsilon
     """
+    timestr = time.strftime("%Y%m%d-%H%M%S")
     best = 0
     scores = []                        # list containing scores from each episode
     scores_window = deque(maxlen=100)  # last 100 scores
@@ -41,8 +44,7 @@ def dqn(agent, env, brain_name, model_name="dqn_3fc_act_nodrop", n_episodes=2000
         if np.mean(scores_window)>=5.0 and np.mean(scores_window)>best:
             best = np.mean(scores_window)
             print(f"\nOverwriting last checkpiont with current average score: {best}")
-            timestr = time.strftime("%Y%m%d-%H%M%S")
-            filename = model_name + timestr + ".pth"
+            filename = model_name + timestr + f"-score-{int(np.mean(scores_window))}" + ".pth"
             torch.save(agent.qnetwork_local.state_dict(), filename)
             
     return scores

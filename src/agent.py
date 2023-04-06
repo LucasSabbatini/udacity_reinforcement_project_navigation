@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from model import QNetwork
 
 
 class Agent():
@@ -39,20 +40,21 @@ class Agent():
 
         # Q-Network
         if not model_path:
+            print(f"Creating new models for local and target networks.")
             self.qnetwork_local = QNetwork(state_size, action_size, seed).to(self.device)
             self.qnetwork_target = QNetwork(state_size, action_size, seed).to(self.device)
             self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=learning_rate)
             self.training = True
         else:
             print(f"Loading model from file {model_path}")
-            self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
-            self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
+            self.qnetwork_local = QNetwork(state_size, action_size, seed).to(self.device)
+            self.qnetwork_target = QNetwork(state_size, action_size, seed).to(self.device)
             self.qnetwork_local.load_state_dict(torch.load(model_path))
             self.qnetwork_target.load_state_dict(torch.load(model_path))
             self.training = False
         
         # Replay memory
-        self.memory = PrioritizedReplayBuffer(action_size, buffer_size, batch_size, seed)
+        self.memory = PrioritizedReplayBuffer(action_size, buffer_size, batch_size, seed, self.device)
         
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = t_step
@@ -128,7 +130,7 @@ class Agent():
             state (array_like): current state
             eps (float): epsilon, for epsilon-greedy action selection
         """
-        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local(state)
@@ -146,7 +148,7 @@ class Agent():
 class PrioritizedReplayBuffer: # TODO: Implement Prioritized Experience Replay    
     """Fixed-size buffer to store experience tuples."""
 
-    def __init__(self, action_size, buffer_size, batch_size, seed):
+    def __init__(self, action_size, buffer_size, batch_size, seed, device):
         """Initialize a ReplayBuffer object.
 
         Params
@@ -156,6 +158,7 @@ class PrioritizedReplayBuffer: # TODO: Implement Prioritized Experience Replay
             batch_size (int): size of each training batch
             seed (int): random seed
         """
+        self.device = device
         self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)  
         self.batch_size = batch_size
@@ -171,11 +174,11 @@ class PrioritizedReplayBuffer: # TODO: Implement Prioritized Experience Replay
         """Randomly sample a batch of experiences from memory."""
         experiences = random.sample(self.memory, k=self.batch_size)
 
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(self.device)
+        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(self.device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(self.device)
+        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(self.device)
+        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(self.device)
   
         return (states, actions, rewards, next_states, dones)
 
